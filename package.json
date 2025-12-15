@@ -1,6 +1,6 @@
 {
   "name": "@contentstorage/vue-i18n-plugin",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Vue-i18n plugin for Contentstorage live editor translation tracking",
   "author": "Kaido Hussar <kaido@contentstorage.app>",
   "main": "dist/index.js",
@@ -57,5 +57,8 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/contentstorage/vue-i18n-plugin.git"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
