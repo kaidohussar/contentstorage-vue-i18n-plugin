@@ -167,44 +167,6 @@ interface ContentstorageVueI18nOptions {
 }
 ```
 
-## Advanced Usage
-
-### Custom CDN URL
-
-```typescript
-const i18n = createContentstorageI18n({
-  contentKey: 'your-key',
-  loadPath: (lng) => `https://your-custom-cdn.com/translations/${lng}.json`,
-  enableCdnLoading: true,
-  locale: 'en',
-});
-```
-
-### Custom Fetch with Authentication
-
-```typescript
-const i18n = createContentstorageI18n({
-  contentKey: 'your-key',
-  enableCdnLoading: true,
-  request: async (url, options) => {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        Authorization: 'Bearer YOUR_TOKEN',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return response.json();
-  },
-  locale: 'en',
-});
-```
-
 ### Manual Translation Tracking
 
 When loading translations from custom sources:
