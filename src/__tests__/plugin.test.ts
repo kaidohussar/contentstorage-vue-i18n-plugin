@@ -121,7 +121,7 @@ describe('plugin', () => {
       expect(i18n.contentStorage.loader).toBeNull();
     });
 
-    it('should track initial messages when in live mode', () => {
+    it('should NOT preload messages in live mode (gradual population)', () => {
       // Reset mock to return actual messages
       jest.mocked(createI18n).mockImplementationOnce((options: any) => {
         const messages = options?.messages || {};
@@ -149,8 +149,8 @@ describe('plugin', () => {
       });
 
       const memoryMap = getMemoryMap();
-      expect(memoryMap?.has('Hello')).toBe(true);
-      expect(memoryMap?.has('Goodbye')).toBe(true);
+      // memoryMap should be empty - translations are only added via $t() calls
+      expect(memoryMap?.size).toBe(0);
     });
   });
 
@@ -233,7 +233,7 @@ describe('plugin', () => {
       expect(tracker.isAttached).toBe(true);
     });
 
-    it('should track initial messages when attaching', () => {
+    it('should NOT preload messages when attaching (gradual population)', () => {
       const mockI18n = {
         global: {
           ...createMockI18nGlobal(),
@@ -245,8 +245,8 @@ describe('plugin', () => {
       attachContentstorageTracker(mockI18n as any, { forceLiveMode: true });
 
       const memoryMap = getMemoryMap();
-      expect(memoryMap?.has('Hello')).toBe(true);
-      expect(memoryMap?.has('Goodbye')).toBe(true);
+      // memoryMap should be empty - translations are only added via $t() calls
+      expect(memoryMap?.size).toBe(0);
     });
 
     it('should not attach when not in live mode', () => {

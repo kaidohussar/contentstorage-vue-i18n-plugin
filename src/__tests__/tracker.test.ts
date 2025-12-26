@@ -34,6 +34,7 @@ describe('ContentstorageTracker', () => {
     const win = window as any;
     delete win.memoryMap;
     delete win.currentLanguageCode;
+    delete win.__contentstorageRefresh;
 
     // Reset live editor script
     resetLiveEditorScript();
@@ -100,7 +101,7 @@ describe('ContentstorageTracker', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should track initial messages when attaching', () => {
+    it('should NOT preload messages when attaching (gradual population)', () => {
       const tracker = new ContentstorageTracker({ forceLiveMode: true });
       const mockI18n = createMockI18n({
         en: {
@@ -112,8 +113,38 @@ describe('ContentstorageTracker', () => {
       tracker.attach(mockI18n as any);
 
       const memoryMap = getMemoryMap();
+      // memoryMap should be empty - translations are only added via $t() calls
+      expect(memoryMap?.size).toBe(0);
+    });
+  });
+
+  describe('preloadMessages', () => {
+    it('should preload all messages when called explicitly', () => {
+      const tracker = new ContentstorageTracker({ forceLiveMode: true });
+      const mockI18n = createMockI18n({
+        en: {
+          greeting: 'Hello',
+          nested: { title: 'Welcome' },
+        },
+      });
+
+      tracker.attach(mockI18n as any);
+      tracker.preloadMessages(mockI18n.global as any);
+
+      const memoryMap = getMemoryMap();
       expect(memoryMap?.has('Hello')).toBe(true);
       expect(memoryMap?.has('Welcome')).toBe(true);
+    });
+
+    it('should not preload when not in live mode', () => {
+      const tracker = new ContentstorageTracker({ forceLiveMode: false });
+      const mockI18n = createMockI18n({
+        en: { greeting: 'Hello' },
+      });
+
+      tracker.preloadMessages(mockI18n.global as any);
+
+      expect(getMemoryMap()).toBeNull();
     });
   });
 
@@ -219,6 +250,71 @@ describe('ContentstorageTracker', () => {
       const tracker = createContentstorageTracker({ debug: true });
 
       expect(tracker).toBeInstanceOf(ContentstorageTracker);
+    });
+  });
+
+  describe('refresh function', () => {
+    it('should expose __contentstorageRefresh on window in live mode', () => {
+      new ContentstorageTracker({ forceLiveMode: true });
+
+      const win = window as any;
+      expect(typeof win.__contentstorageRefresh).toBe('function');
+    });
+
+    it('should not expose __contentstorageRefresh when not in live mode', () => {
+      new ContentstorageTracker({ forceLiveMode: false });
+
+      const win = window as any;
+      expect(win.__contentstorageRefresh).toBeUndefined();
+    });
+
+    it('should clear memoryMap when refresh is called', () => {
+      const tracker = new ContentstorageTracker({ forceLiveMode: true });
+
+      // Add some translations to memoryMap
+      tracker.trackMessages(
+        {
+          greeting: 'Hello',
+          farewell: 'Goodbye',
+        },
+        'en'
+      );
+
+      const memoryMap = getMemoryMap();
+      expect(memoryMap?.size).toBe(2);
+
+      // Call refresh
+      const win = window as any;
+      win.__contentstorageRefresh();
+
+      // memoryMap should be cleared
+      expect(memoryMap?.size).toBe(0);
+    });
+
+    it('should allow translations to be re-tracked after refresh', () => {
+      const tracker = new ContentstorageTracker({ forceLiveMode: true });
+      const mockI18n = createMockI18n({
+        en: { greeting: 'Hello World' },
+      });
+
+      tracker.attach(mockI18n as any);
+
+      // Simulate a translation
+      mockI18n.global._callPostTranslation('Hello World', 'greeting');
+
+      const memoryMap = getMemoryMap();
+      expect(memoryMap?.has('Hello World')).toBe(true);
+
+      // Call refresh - clears memoryMap
+      const win = window as any;
+      win.__contentstorageRefresh();
+
+      expect(memoryMap?.size).toBe(0);
+
+      // Simulate another translation - should be tracked again
+      mockI18n.global._callPostTranslation('Hello World', 'greeting');
+
+      expect(memoryMap?.has('Hello World')).toBe(true);
     });
   });
 });

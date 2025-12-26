@@ -6,9 +6,11 @@ import {
   loadLiveEditorScript,
   trackTranslation,
   cleanupMemoryMap,
+  clearMemoryMap,
   flattenTranslations,
   setCurrentLanguageCode,
   getNestedValue,
+  getContentstorageWindow,
   isBrowser,
 } from './utils';
 
@@ -62,6 +64,9 @@ export class ContentstorageTracker {
     // Initialize memory map
     initializeMemoryMap();
 
+    // Expose refresh function for live editor
+    this.exposeRefreshFunction();
+
     // Load the live editor script
     loadLiveEditorScript(
       2,
@@ -76,6 +81,27 @@ export class ContentstorageTracker {
 
     if (this.options.debug) {
       console.log('[ContentStorage] Live editor mode enabled');
+    }
+  }
+
+  /**
+   * Expose refresh function on window for live-editor.js to call
+   * Clears the memoryMap so only currently-rendered translations are tracked
+   */
+  private exposeRefreshFunction(): void {
+    const win = getContentstorageWindow();
+    if (!win) return;
+
+    win.__contentstorageRefresh = () => {
+      clearMemoryMap();
+
+      if (this.options.debug) {
+        console.log('[ContentStorage] Refresh triggered: memoryMap cleared');
+      }
+    };
+
+    if (this.options.debug) {
+      console.log('[ContentStorage] Refresh function exposed on window.__contentstorageRefresh');
     }
   }
 
@@ -115,8 +141,9 @@ export class ContentstorageTracker {
     // Set up the postTranslation handler
     this.setupPostTranslationHandler(i18n, globalInstance);
 
-    // Track initial messages
-    this.trackInitialMessages(globalInstance);
+    // Note: We don't pre-load all translations anymore.
+    // memoryMap is populated gradually as $t() is called.
+    // Use preloadMessages() if you need to pre-populate.
 
     this.attached = true;
 
@@ -288,15 +315,31 @@ export class ContentstorageTracker {
   }
 
   /**
-   * Track initial messages loaded with vue-i18n
+   * Preload all messages from the current locale into memoryMap.
+   *
+   * By default, memoryMap is populated gradually as $t() is called.
+   * Use this method if you want to pre-populate all translations upfront.
+   *
+   * @param instance - Optional Composer or VueI18n instance. If not provided,
+   *                   uses the attached instance.
    */
-  private trackInitialMessages(instance: Composer | VueI18n): void {
+  preloadMessages(instance?: Composer | VueI18n): void {
     if (!isBrowser()) return;
+    if (!this.isLiveMode) return;
 
-    const locale = this.getLocale(instance);
+    // Use provided instance or get from attached i18n
+    const targetInstance = instance;
+    if (!targetInstance) {
+      if (this.options.debug) {
+        console.warn('[ContentStorage] No instance provided to preloadMessages()');
+      }
+      return;
+    }
+
+    const locale = this.getLocale(targetInstance);
     if (!locale) return;
 
-    const messages = this.getLocaleMessages(instance, locale);
+    const messages = this.getLocaleMessages(targetInstance, locale);
     if (!messages || typeof messages !== 'object') return;
 
     const flatTranslations = flattenTranslations(messages);
@@ -308,7 +351,7 @@ export class ContentstorageTracker {
 
     if (this.options.debug) {
       console.log(
-        `[ContentStorage] Tracked ${flatTranslations.length} initial translations for ${locale}`
+        `[ContentStorage] Preloaded ${flatTranslations.length} translations for ${locale}`
       );
     }
   }

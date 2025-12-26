@@ -34,6 +34,7 @@ export interface ContentstorageWindow extends Window {
   memoryMap?: MemoryMap;
   __contentStorageDebug?: boolean;
   currentLanguageCode?: string;
+  __contentstorageRefresh?: () => void;
 }
 
 /**

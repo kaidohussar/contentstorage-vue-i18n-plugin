@@ -147,6 +147,17 @@ export function getMemoryMap(): MemoryMap | null {
 }
 
 /**
+ * Clears all entries from the memory map
+ * Used by live editor to refresh tracking
+ */
+export function clearMemoryMap(): void {
+  const memoryMap = getMemoryMap();
+  if (memoryMap) {
+    memoryMap.clear();
+  }
+}
+
+/**
  * Sets the current language code on the window object
  * This is used by the live editor to know which language is currently active
  *
